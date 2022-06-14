@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"/>
+    <title>Diagnostics</title>
+    <link href="css/zui.min.css" rel="stylesheet">
+    <style>
+        .dashboard {
+            margin: 14px 0;
+            padding: 10px;
+        }
+
+        .dashboard > div {
+            margin: 9px 0;
+        }
+
+        .console {
+            margin: 14px 0;
+            padding: 10px;
+            background: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Network Utilities</h1>
+    <hr>
+    <div class="dashboard card">
+        <div class="col-md-4">
+            <form onsubmit="return false;">
+                <div class="form-group">
+                    <input type="text" class="form-control" id="pinghost" placeholder="example.com" value="example.com">
+                </div>
+                <button type="submit" id="pingv4" class="btn btn-primary">ping (v4)</button>
+                <button type="submit" id="pingv6" class="btn btn-primary">ping (v6)</button>
+            </form>
+        </div>
+        <div class="col-md-4">
+            <form onsubmit="return false;">
+                <div class="form-group">
+                    <input type="text" class="form-control" id="traceroutehost" placeholder="example.com"
+                           value="example.com">
+                </div>
+                <button type="submit" id="traceroutev4" class="btn btn-primary">traceroute (v4)</button>
+                <button type="submit" id="traceroutev6" class="btn btn-primary">traceroute (v6)</button>
+            </form>
+        </div>
+        <div class="col-md-4">
+            <form onsubmit="return false;">
+                <div class="form-group">
+                    <input type="text" class="form-control" id="nslookuphost" placeholder="example.com"
+                           value="example.com">
+                </div>
+                <button type="submit" id="nslookup" class="btn btn-primary">nslookup</button>
+            </form>
+        </div>
+    </div>
+    <div class="console card">
+        PING openwrt.org (139.59.209.225): 56 data bytes<br>
+        64 bytes from 139.59.209.225: seq=0 ttl=51 time=296.166 ms<br>
+        64 bytes from 139.59.209.225: seq=1 ttl=51 time=295.588 ms<br>
+        64 bytes from 139.59.209.225: seq=2 ttl=51 time=293.963 ms<br>
+        64 bytes from 139.59.209.225: seq=3 ttl=51 time=294.720 ms<br>
+        64 bytes from 139.59.209.225: seq=4 ttl=51 time=294.308 ms<br>
+        <br>
+        --- openwrt.org ping statistics ---<br>
+        5 packets transmitted, 5 packets received, 0% packet loss<br>
+        round-trip min/avg/max = 293.963/294.949/296.166 ms<br>
+    </div>
+    <hr>
+    <div class="footer">
+        &copy; copyright <a href="http://www.follow.ygg/">follow</a>.
+    </div>
+</div>
+<script src="js/jquery-3.6.0.min.js"></script>
+<script src="js/rxjs-7.5.5.umd.min.js"></script>
+<script src="js/zui.min.js"></script>
+<script>
+    const {fromEvent} = rxjs
+    let consoleElement = document.querySelector("div.console")
+    let btnDisabled = false
+
+    function btnClickable() {
+        return !btnDisabled
+    }
+
+    function toggleClick() {
+        let btnElements = document.querySelectorAll("button[type='submit']")
+        btnElements.forEach((i) => {
+            if (btnDisabled) {
+                i.removeAttribute("disabled")
+            } else {
+                i.setAttribute("disabled", "")
+            }
+        })
+        btnDisabled = !btnDisabled
+    }
+
+    function pingCommand(host, ifName, protocolVersion) {
+        consoleElement.innerHTML = 'loading...'
+        fetch(`/api/ping/${host}`, {headers: {'interface': ifName, 'protocol': protocolVersion}})
+            .then(r => r.body)
+            .then(async r => {
+                consoleElement.innerHTML = ''
+                const reader = r.getReader()
+                while (true) {
+                    const {done, value} = await reader.read();
+                    if (done) {
+                        toggleClick()
+                        break
+                    }
+                    //uint8 array to string
+                    consoleElement.innerHTML += new TextDecoder("utf-8").decode(value).replaceAll('\n', '<br>')
+                }
+            })
+            .catch(err => {
+                consoleElement.innerHTML = err
+            })
+    }
+
+    function tracerouteCommand(host, ifName, protocolVersion) {
+        consoleElement.innerHTML = 'loading...'
+        fetch(`/api/traceroute/${host}`, {headers: {'interface': ifName, 'protocol': protocolVersion}})
+            .then(r => r.body)
+            .then(async r => {
+                consoleElement.innerHTML = ''
+                const reader = r.getReader()
+                while (true) {
+                    const {done, value} = await reader.read();
+                    if (done) {
+                        toggleClick()
+                        break
+                    }
+                    //uint8 array to string
+                    consoleElement.innerHTML += new TextDecoder("utf-8").decode(value).replaceAll('\n', '<br>')
+                }
+            })
+            .catch(err => {
+                consoleElement.innerHTML = err
+            })
+    }
+
+    function nslookupCommand(host) {
+        consoleElement.innerHTML = 'loading...'
+        fetch(`/api/nslookup/${host}`, {headers: {}})
+            .then(r => r.body)
+            .then(async r => {
+                consoleElement.innerHTML = ''
+                const reader = r.getReader()
+                while (true) {
+                    const {done, value} = await reader.read();
+                    if (done) {
+                        toggleClick()
+                        break
+                    }
+                    //uint8 array to string
+                    consoleElement.innerHTML += new TextDecoder("utf-8").decode(value).replaceAll('\n', '<br>')
+                }
+            })
+            .catch(err => {
+                consoleElement.innerHTML = err
+            })
+    }
+
+    function loadPingModule() {
+        let pingHostInput = document.querySelector("input[type='text']#pinghost")
+        let pingv4Btn = document.querySelector("button#pingv4")
+        fromEvent(pingv4Btn, 'click').subscribe(_ => {
+            if (!btnClickable()) {
+                new $.zui.Messager('请等待执行完成！', {
+                    icon: 'bell',
+                    type: 'warning'
+                }).show()
+                return
+            }
+            toggleClick()
+            let host = pingHostInput.value
+            let ifName = ''
+            let protocolVersion = '4'
+            pingCommand(host, ifName, protocolVersion)
+        })
+        let pingv6Btn = document.querySelector("button#pingv6")
+        fromEvent(pingv6Btn, 'click').subscribe(_ => {
+            if (!btnClickable()) {
+                new $.zui.Messager('请等待执行完成！', {
+                    icon: 'bell',
+                    type: 'warning'
+                }).show()
+                return
+            }
+            toggleClick()
+            let host = pingHostInput.value
+            let ifName = ''
+            let protocolVersion = '6'
+            pingCommand(host, ifName, protocolVersion)
+        })
+    }
+
+    function loadTracerouteModule() {
+        let tracerouteHostInput = document.querySelector("input[type='text']#traceroutehost")
+        let traceroutev4Btn = document.querySelector("button#traceroutev4")
+        fromEvent(traceroutev4Btn, 'click').subscribe(_ => {
+            if (!btnClickable()) {
+                new $.zui.Messager('请等待执行完成！', {
+                    icon: 'bell',
+                    type: 'warning'
+                }).show()
+                return
+            }
+            toggleClick()
+            let host = tracerouteHostInput.value
+            let ifName = ''
+            let protocolVersion = '4'
+            tracerouteCommand(host, ifName, protocolVersion)
+        })
+        let traceroutev6Btn = document.querySelector("button#traceroutev6")
+        fromEvent(traceroutev6Btn, 'click').subscribe(_ => {
+            if (!btnClickable()) {
+                new $.zui.Messager('请等待执行完成！', {
+                    icon: 'bell',
+                    type: 'warning'
+                }).show()
+                return
+            }
+            toggleClick()
+            let host = tracerouteHostInput.value
+            let ifName = ''
+            let protocolVersion = '6'
+            tracerouteCommand(host, ifName, protocolVersion)
+        })
+    }
+
+    function loadnslookupModule() {
+        let nslookupHostInput = document.querySelector("input[type='text']#nslookuphost")
+        let nslookupBtn = document.querySelector("button#nslookup")
+        fromEvent(nslookupBtn, 'click').subscribe(_ => {
+            if (!btnClickable()) {
+                new $.zui.Messager('请等待执行完成！', {
+                    icon: 'bell',
+                    type: 'warning'
+                }).show()
+                return
+            }
+            toggleClick()
+            let host = nslookupHostInput.value
+            nslookupCommand(host)
+        })
+    }
+
+    function loadPlugins() {
+        loadPingModule()
+        loadTracerouteModule()
+        loadnslookupModule()
+    }
+
+    $(function () {
+        loadPlugins()
+    })
+</script>
+</body>
+</html>
