@@ -55,6 +55,19 @@
                 <button type="submit" id="nslookup" class="btn btn-primary">nslookup</button>
             </form>
         </div>
+        <div class="col-md-4">
+            <form onsubmit="return false;">
+                <div>
+                    <label>
+                        <input type="radio" name="protocol" value="4" checked>IPv4
+                    </label>
+                    <label>
+                        <input type="radio" name="protocol" value="6">IPv6
+                    </label>
+                </div>
+                <button type="submit" id="route" class="btn btn-primary">route</button>
+            </form>
+        </div>
     </div>
     <div class="console card">
         PING openwrt.org (139.59.209.225): 56 data bytes<br>
@@ -163,15 +176,33 @@
             })
     }
 
+    function routeCommand(protocolVersion) {
+        consoleElement.innerHTML = 'loading...'
+        fetch(`/api/route`, {headers: {'protocol': protocolVersion}})
+            .then(r => r.body)
+            .then(async r => {
+                consoleElement.innerHTML = ''
+                const reader = r.getReader()
+                while (true) {
+                    const {done, value} = await reader.read();
+                    if (done) {
+                        toggleClick()
+                        break
+                    }
+                    //uint8 array to string
+                    consoleElement.innerHTML += new TextDecoder("utf-8").decode(value).replaceAll('\n', '<br>')
+                }
+            })
+            .catch(err => {
+                consoleElement.innerHTML = err
+            })
+    }
+
     function loadPingModule() {
         let pingHostInput = document.querySelector("input[type='text']#pinghost")
         let pingv4Btn = document.querySelector("button#pingv4")
         fromEvent(pingv4Btn, 'click').subscribe(_ => {
             if (!btnClickable()) {
-                new $.zui.Messager('请等待执行完成！', {
-                    icon: 'bell',
-                    type: 'warning'
-                }).show()
                 return
             }
             toggleClick()
@@ -183,10 +214,6 @@
         let pingv6Btn = document.querySelector("button#pingv6")
         fromEvent(pingv6Btn, 'click').subscribe(_ => {
             if (!btnClickable()) {
-                new $.zui.Messager('请等待执行完成！', {
-                    icon: 'bell',
-                    type: 'warning'
-                }).show()
                 return
             }
             toggleClick()
@@ -202,10 +229,6 @@
         let traceroutev4Btn = document.querySelector("button#traceroutev4")
         fromEvent(traceroutev4Btn, 'click').subscribe(_ => {
             if (!btnClickable()) {
-                new $.zui.Messager('请等待执行完成！', {
-                    icon: 'bell',
-                    type: 'warning'
-                }).show()
                 return
             }
             toggleClick()
@@ -217,10 +240,6 @@
         let traceroutev6Btn = document.querySelector("button#traceroutev6")
         fromEvent(traceroutev6Btn, 'click').subscribe(_ => {
             if (!btnClickable()) {
-                new $.zui.Messager('请等待执行完成！', {
-                    icon: 'bell',
-                    type: 'warning'
-                }).show()
                 return
             }
             toggleClick()
@@ -231,15 +250,11 @@
         })
     }
 
-    function loadnslookupModule() {
+    function loadNslookupModule() {
         let nslookupHostInput = document.querySelector("input[type='text']#nslookuphost")
         let nslookupBtn = document.querySelector("button#nslookup")
         fromEvent(nslookupBtn, 'click').subscribe(_ => {
             if (!btnClickable()) {
-                new $.zui.Messager('请等待执行完成！', {
-                    icon: 'bell',
-                    type: 'warning'
-                }).show()
                 return
             }
             toggleClick()
@@ -248,10 +263,24 @@
         })
     }
 
+    function loadRouteModule() {
+        let routeProtocolInput = document.querySelector("input[type='radio'][name='protocol']")
+        let routeBtn = document.querySelector("button#route")
+        fromEvent(routeBtn, 'click').subscribe(_ => {
+            if (!btnClickable()) {
+                return
+            }
+            toggleClick()
+            let protocolVersion = routeProtocolInput.value
+            routeCommand(protocolVersion)
+        })
+    }
+
     function loadPlugins() {
         loadPingModule()
         loadTracerouteModule()
-        loadnslookupModule()
+        loadNslookupModule()
+        loadRouteModule()
     }
 
     $(function () {

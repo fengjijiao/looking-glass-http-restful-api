@@ -7,6 +7,7 @@ import (
 	"looking-glass-http-restful-api/cmd"
 	"looking-glass-http-restful-api/cmd/exec/nslookup"
 	"looking-glass-http-restful-api/cmd/exec/ping"
+	"looking-glass-http-restful-api/cmd/exec/route"
 	"looking-glass-http-restful-api/cmd/exec/traceroute"
 	"net/http"
 	"path"
@@ -48,7 +49,8 @@ func Router() *gin.Engine {
 	r.GET("/hello", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "hello, world!"})
 	})
-	r.GET("/api/ping/:host", func(c *gin.Context) {
+	apiRouteGroup := r.Group("/api")
+	apiRouteGroup.GET("/ping/:host", func(c *gin.Context) {
 		host := c.Param("host")
 		ifName := c.GetHeader("interface")
 		if ifName == "" {
@@ -62,7 +64,7 @@ func Router() *gin.Engine {
 		go ping.Run(opChan, host, ifName, protocolVersion)
 		c.Stream(cmd.Stream(opChan, c))
 	})
-	r.GET("/api/traceroute/:host", func(c *gin.Context) {
+	apiRouteGroup.GET("/traceroute/:host", func(c *gin.Context) {
 		host := c.Param("host")
 		ifName := c.GetHeader("interface")
 		if ifName == "" {
@@ -76,7 +78,7 @@ func Router() *gin.Engine {
 		go traceroute.Run(opChan, host, ifName, protocolVersion)
 		c.Stream(cmd.Stream(opChan, c))
 	})
-	r.GET("/api/nslookup/:host", func(c *gin.Context) {
+	apiRouteGroup.GET("/nslookup/:host", func(c *gin.Context) {
 		host := c.Param("host")
 		protocolVersion := c.GetHeader("protocol")
 		if protocolVersion == "" {
@@ -84,6 +86,15 @@ func Router() *gin.Engine {
 		}
 		opChan := make(chan string)
 		go nslookup.Run(opChan, host)
+		c.Stream(cmd.Stream(opChan, c))
+	})
+	apiRouteGroup.GET("/route", func(c *gin.Context) {
+		protocolVersion := c.GetHeader("protocol")
+		if protocolVersion == "" {
+			protocolVersion = "4"
+		}
+		opChan := make(chan string)
+		go route.Run(opChan, protocolVersion)
 		c.Stream(cmd.Stream(opChan, c))
 	})
 	return r
