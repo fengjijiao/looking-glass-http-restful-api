@@ -56,7 +56,7 @@
             </form>
         </div>
         <div class="col-md-4">
-            <form onsubmit="return false;">
+            <form id="routeForm" onsubmit="return false;">
                 <div>
                     <label>
                         <input type="radio" name="protocol" value="4" checked>IPv4
@@ -65,7 +65,7 @@
                         <input type="radio" name="protocol" value="6">IPv6
                     </label>
                 </div>
-                <button type="submit" id="route" class="btn btn-primary">route</button>
+                <button type="submit" class="btn btn-primary">route</button>
             </form>
         </div>
     </div>
@@ -263,15 +263,23 @@
         })
     }
 
+    function entries2Map(data) {
+        let map = {}
+        for (const entry of data) {
+            map[entry[0]] = entry[1]
+        }
+        return map
+    }
+
     function loadRouteModule() {
-        let routeProtocolInput = document.querySelector("input[type='radio'][name='protocol']")
-        let routeBtn = document.querySelector("button#route")
-        fromEvent(routeBtn, 'click').subscribe(_ => {
+        let routeForm = document.querySelector("form#routeForm")
+        fromEvent(routeForm, 'submit').subscribe(_ => {
             if (!btnClickable()) {
                 return
             }
             toggleClick()
-            let protocolVersion = routeProtocolInput.value
+            const data = entries2Map(new FormData(routeForm))
+            let protocolVersion = data.protocol
             routeCommand(protocolVersion)
         })
     }
