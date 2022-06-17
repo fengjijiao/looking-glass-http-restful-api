@@ -8,6 +8,7 @@ import (
 	"log"
 	"os/exec"
 	"runtime"
+	"sync"
 )
 
 func Run(opChan chan string, cmd string) {
@@ -27,8 +28,17 @@ func Run(opChan chan string, cmd string) {
 		log.Print(err)
 		return
 	}
-	reader := bufio.NewReader(stdout)
+	defer func(stdout io.ReadCloser) {
+		err := stdout.Close()
+		if err != nil {
+			log.Print(err)
+		}
+	}(stdout)
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		reader := bufio.NewReader(stdout)
 		b := make([]byte, 28)
 		for {
 			n, err := reader.Read(b)
@@ -39,7 +49,8 @@ func Run(opChan chan string, cmd string) {
 		}
 		close(opChan)
 	}()
-	err = c.Run()
+	err = c.Start()
+	wg.Wait()
 	if err != nil {
 		log.Print(err)
 		return

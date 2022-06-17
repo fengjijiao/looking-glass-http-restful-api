@@ -12,13 +12,13 @@ func Run(opChan chan string, host string, ifName string, protocolVersion string)
 	switch runtime.GOOS {
 	case "linux":
 		if ifName == "" {
-			c = fmt.Sprintf("traceroute -%s %s", protocolVersion, host)
+			c = fmt.Sprintf("traceroute -n -%s %s", protocolVersion, host)
 		} else {
-			c = fmt.Sprintf("traceroute -%s %s -i %s", protocolVersion, host, ifName)
+			c = fmt.Sprintf("traceroute -n -%s %s -i %s", protocolVersion, host, ifName)
 		}
 		break
 	case "windows":
-		c = fmt.Sprintf("tracert -%s %s", protocolVersion, host)
+		c = fmt.Sprintf("tracert -d -w 1000 -%s %s", protocolVersion, host)
 		break
 	default:
 		log.Fatal("not support this platform!")
